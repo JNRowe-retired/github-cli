@@ -43,6 +43,8 @@ the -r option, commands can be invoked from anywhere):
                                       all commands)
   ghi -r <repo>                       specify a repository (gets user from
                                       global git config)
+  ghi -c <cache>                      specify a directory to cache HTTP data
+
 
   Description: command-line interface to GitHub's Issues API (v2)
 
@@ -64,4 +66,6 @@ the -r option, commands can be invoked from anywhere):
     -w, --web, --webbrowser
                           show issue(s) GitHub page in web browser (only for
                           list and show commands) [default: False]
+    -c CACHE, --cache=CACHE
+                          specify a directory to cache HTTP data
     -V, --version         show program's version number and exit

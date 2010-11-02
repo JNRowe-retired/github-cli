@@ -331,7 +331,8 @@ Examples:
 %prog -r <user>/<repo>                specify a repository (can be used for
                                     all commands)
 %prog -r <repo>                       specify a repository (gets user from
-                                    global git config)"""
+                                    global git config)
+%prog -c <cache>                      specify a directory to cache HTTP data"""
 
     description = """Description:
 command-line interface to GitHub's Issues API (v2)"""
@@ -355,6 +356,8 @@ command-line interface to GitHub's Issues API (v2)"""
     parser.add_option("-w", "--web", "--webbrowser", action="store_true",
         dest="webbrowser", default=False, help="show issue(s) GitHub page "\
         "in web browser (only for list and show commands) [default: False]")
+    parser.add_option("-c", "--cache", action="store", default=None,
+        help="specify a directory to cache HTTP data")
     parser.add_option("-V", "--version", action="store_true",
         dest="show_version", default=False,
         help="show program's version number and exit")
@@ -403,7 +406,8 @@ command-line interface to GitHub's Issues API (v2)"""
 
 
     config = get_config()
-    github = Github(username=config["user"], api_token=config["token"])
+    github = Github(username=config["user"], api_token=config["token"],
+        cache=kwargs.get("cache"))
     try:
         repository = kwargs.get('repo')
         if repository:
