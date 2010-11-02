@@ -1,3 +1,4 @@
+import os
 import sys
 import webbrowser as browser
 from optparse import OptionParser
@@ -299,6 +300,10 @@ class Commands(object):
 
 
 def main():
+    xdg_cache_dir = os.getenv("XDG_CACHE_HOME",
+        os.path.join(os.getenv("HOME", "/"), ".cache"))
+    cache_dir = os.path.join(xdg_cache_dir, "github-cli")
+
     usage = """usage: %prog command [args] [options]
 
 Examples:
@@ -332,7 +337,8 @@ Examples:
                                     all commands)
 %prog -r <repo>                       specify a repository (gets user from
                                     global git config)
-%prog -c <cache>                      specify a directory to cache HTTP data"""
+%prog -c <cache>                      specify a directory to cache HTTP data
+                                    (default: $XDG_CACHE_HOME/github-cli)"""
 
     description = """Description:
 command-line interface to GitHub's Issues API (v2)"""
@@ -356,8 +362,9 @@ command-line interface to GitHub's Issues API (v2)"""
     parser.add_option("-w", "--web", "--webbrowser", action="store_true",
         dest="webbrowser", default=False, help="show issue(s) GitHub page "\
         "in web browser (only for list and show commands) [default: False]")
-    parser.add_option("-c", "--cache", action="store", default=None,
-        help="specify a directory to cache HTTP data")
+    parser.add_option("-c", "--cache", action="store", default=cache_dir,
+        help="specify a directory to cache HTTP data [default: "\
+        "$XDG_CACHE_HOME/github-cli]")
     parser.add_option("-V", "--version", action="store_true",
         dest="show_version", default=False,
         help="show program's version number and exit")
