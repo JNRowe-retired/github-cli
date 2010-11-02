@@ -1,5 +1,4 @@
 import sys
-import urllib
 import webbrowser as browser
 from optparse import OptionParser
 
@@ -12,8 +11,11 @@ except ImportError:
         print "error: simplejson required"
         sys.exit(1)
 
-from github.utils import urlopen2, get_remote_info, edit_text, \
-    get_remote_info_from_option, get_prog, Pager, wrap_text, get_underline
+from github2.client import Github
+
+from github.utils import  get_remote_info, edit_text, \
+    get_remote_info_from_option, get_prog, Pager, wrap_text, get_underline, \
+    get_config
 from github.version import get_version
 
 
@@ -29,8 +31,8 @@ def format_issue(issue, verbose=True):
     if verbose:
         indent = ""
     else:
-        indent = " " * (5 - len(str(issue['number'])))
-    title = "%s%s. %s" % (indent, issue['number'], issue['title'])
+        indent = " " * (5 - len(str(issue.number)))
+    title = "%s%s. %s" % (indent, issue.number, issue.title)
     title = smart_unicode(title)
     if not verbose:
         output.append(title[:80])
@@ -39,30 +41,30 @@ def format_issue(issue, verbose=True):
         output.append(title)
         underline = get_underline(title)
         output.append(underline)
-        if issue['body']:
-            body = smart_unicode(wrap_text(issue['body']))
+        if issue.body:
+            body = smart_unicode(wrap_text(issue.body))
             output.append(body)
-        output.append("    state: %s" % issue['state'])
-        output.append("     user: %s" % issue['user'])
-        output.append("    votes: %s" % issue['votes'])
-        output.append("  created: %s" % issue['created_at'])
-        updated = issue.get('updated_at')
-        if updated and not updated == issue['created_at']:
+        output.append("    state: %s" % issue.state)
+        output.append("     user: %s" % issue.user)
+        output.append("    votes: %s" % issue.votes)
+        output.append("  created: %s" % issue.created_at)
+        updated = issue.updated_at
+        if updated and not updated == issue.created_at:
             output.append("  updated: %s" % updated)
-        output.append(" comments: %s" % issue.get('comments', 0))
+        output.append(" comments: %s" % issue.comments)
         output.append(" ")
     return output
 
 
 def format_comment(comment, nr, total):
-    timestamp = comment.get("updated_at", comment["created_at"])
-    title = "comment %s of %s by %s (%s)" % (nr, total, comment["user"],
+    timestamp = getattr(comment, "updated_at", comment.created_at)
+    title = "comment %s of %s by %s (%s)" % (nr, total, comment.user,
         timestamp)
     title = smart_unicode(title)
     output = [title]
     underline = get_underline(title)
     output.append(underline)
-    body = smart_unicode(wrap_text(comment['body']))
+    body = smart_unicode(wrap_text(comment.body))
     output.append(body)
     return output
 
@@ -107,7 +109,7 @@ def create_edit_issue(issue=None, text=None):
 # The first line will be used as the title.
 # Lines starting with `#` will be ignored."""
     if issue:
-        issue['main'] = main_text
+        issue.main = main_text
         template = """%(title)s
 %(body)s
 %(main)s
@@ -116,7 +118,7 @@ def create_edit_issue(issue=None, text=None):
 #      user:  %(user)s
 #     votes:  %(votes)s
 #     state:  %(state)s
-#   created:  %(created_at)s""" % issue
+#   created:  %(created_at)s""" % issue.__dict__
     else:
         template = "\n%s" % main_text
     if text:
@@ -129,7 +131,7 @@ def create_edit_issue(issue=None, text=None):
     lines = text.splitlines()
     title = lines[0]
     body = "\n".join(lines[1:]).strip()
-    return {'title': title, 'body': body}
+    return title, body
 
 
 def create_comment(issue):
@@ -141,7 +143,7 @@ def create_comment(issue):
 #      user:  %(user)s
 #     votes:  %(votes)s
 #     state:  %(state)s
-#   created:  %(created_at)s""" % issue
+#   created:  %(created_at)s""" % issue.__dict__
     out = edit_text(inp)
     if not out:
         raise Exception("can not submit an empty comment")
@@ -152,23 +154,20 @@ def create_comment(issue):
 
 class Commands(object):
 
-    def __init__(self, user, repo):
+    def __init__(self, github, user, repo):
+        self.github = github
         self.user = user
         self.repo = repo
         self.url_template = "http://github.com/api/v2/json/issues/%s/%s/%s"
 
-    def search(self, search_term=None, state='open', verbose=False, **kwargs):
-        if not search_term:
+    def search(self, term=None, state='open', verbose=False, **kwargs):
+        if not term:
             example = "%s search experimental" % get_prog()
             msg = "error: search term required\nexample: %s" % example
             print msg
             sys.exit(1)
-        search_term_quoted = urllib.quote_plus(search_term)
-        search_term_quoted = search_term_quoted.replace(".", "%2E")
-        result = self.__submit('search', search_term, state)
-        issues = get_key(result, 'issues')
-        header = "# searching for '%s' returned %s issues" % (search_term,
-            len(issues))
+        issues = self.__submit("search", term, state)
+        header = "# searching for '%s' returned %s issues" % (term, len(issues))
         printer = Pager()
         printer.write(header)
         for issue in issues:
@@ -199,8 +198,7 @@ class Commands(object):
         for st in states:
             header = "# %s issues on %s/%s" % (st, self.user, self.repo)
             printer.write(header)
-            result = self.__submit('list', st)
-            issues = get_key(result, 'issues')
+            issues = self.__submit("list", st)
             if issues:
                 for issue in issues:
                     lines = format_issue(issue, verbose)
@@ -231,9 +229,8 @@ class Commands(object):
             lines = format_issue(issue, verbose=True)
             lines.insert(0, " ")
             printer.write("\n".join(lines))
-            if issue.get("comments", 0) > 0:
-                comments = self.__submit('comments', number)
-                comments = get_key(comments, 'comments')
+            if issue.comments > 0:
+                comments = self.__submit("comments", number)
                 lines = [] # reset
                 total = len(comments)
                 for i in range(total):
@@ -244,15 +241,13 @@ class Commands(object):
             printer.close()
 
     def open(self, message=None, **kwargs):
-        post_data = create_edit_issue(text=message)
-        result = self.__submit('open', data=post_data)
-        issue = get_key(result, 'issue')
+        title, body = create_edit_issue(text=message)
+        issue = self.__submit("open", title, body)
         pprint_issue(issue)
 
     def close(self, number=None, **kwargs):
         validate_number(number, example="%prog close 1")
-        result = self.__submit('close', number)
-        issue = get_key(result, 'issue')
+        issue = self.__submit("close", number)
         pprint_issue(issue)
 
     def reopen(self, number=None, **kwargs):
@@ -264,14 +259,12 @@ class Commands(object):
     def edit(self, number=None, **kwargs):
         validate_number(number, example="%prog edit 1")
         gh_issue = self.__get_issue(number)
-        output = {'title': gh_issue['title'], 'body': gh_issue['body']}
-        post_data = create_edit_issue(gh_issue)
-        if post_data['title'] == output['title'] and \
-                post_data['body'].splitlines() == output['body'].splitlines():
+        title, body = create_edit_issue(gh_issue)
+        if title == gh_issue.title and \
+                body == gh_issue.body.splitlines():
             print "no changes found"
             sys.exit(1)
-        result = self.__submit('edit', number, data=post_data)
-        issue = get_key(result, 'issue')
+        issue = self.__submit('edit', number, title, body)
         pprint_issue(issue)
 
     def label(self, command, label, number=None, **kwargs):
@@ -281,10 +274,7 @@ class Commands(object):
             msg = "label command should use either 'add' or 'remove'\n"\
                 "example: %prog label add %s %s" % (label, number)
             raise Exception(msg)
-        label = urllib.quote(label)
-        label = label.replace(".", "%2E") # this is not done by urllib.quote
-        result = self.__submit('label/%s' % command, label, number)
-        labels = get_key(result, 'labels')
+        labels = self.__submit("%s_label" % command, number, label)
         if labels:
             print "labels for issue #%s:" % number
             for label in labels:
@@ -296,28 +286,16 @@ class Commands(object):
         validate_number(number, example="%prog comment 1")
         gh_issue = self.__get_issue(number)
         comment = create_comment(gh_issue)
-        post_data = {'comment': comment}
-        result = self.__submit('comment', number, data=post_data)
-        returned_comment = get_key(result, 'comment')
+        returned_comment = self.__submit('comment', number, comment)
         if returned_comment:
             print "comment for issue #%s submitted successfully" % number
 
     def __get_issue(self, number):
-        result = self.__submit('show', number)
-        return get_key(result, 'issue')
+        return self.__submit("show", number)
 
     def __submit(self, action, *args, **kwargs):
-        base_url = self.url_template % (action, self.user, self.repo)
-        args_list = list(args)
-        args_list.insert(0, base_url)
-        url = "/".join(args_list)
-        page = urlopen2(url, **kwargs)
-        result = json.load(page)
-        page.close()
-        if result.get('error'):
-            handle_error(result)
-        else:
-            return result
+        project = "/".join([self.user, self.repo])
+        return getattr(self.github.issues, action)(project, *args, **kwargs)
 
 
 def main():
@@ -408,8 +386,8 @@ command-line interface to GitHub's Issues API (v2)"""
         cmd = 'list' # default command
 
     if cmd == 'search':
-        search_term = " ".join(args[1:])
-        args = (args[0], search_term)
+        term = " ".join(args[1:])
+        args = (args[0], term)
 
     # handle command aliases
     cmd = {'o': 'open', 'c': 'close', 'e': 'edit', 'm': 'comment',
@@ -423,13 +401,17 @@ command-line interface to GitHub's Issues API (v2)"""
         args_list.extend(args[1:])
         args = tuple(args_list)
 
+
+    config = get_config()
+    github = Github(username=config["user"], api_token=config["token"])
     try:
         repository = kwargs.get('repo')
         if repository:
             user, repo = get_remote_info_from_option(repository)
         else:
             user, repo = get_remote_info()
-        commands = Commands(user, repo)
+
+        commands = Commands(github, user, repo)
         getattr(commands, cmd)(*args[1:], **kwargs)
     except AttributeError:
         return "error: command '%s' not implemented" % cmd

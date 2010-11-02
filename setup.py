@@ -13,7 +13,7 @@ except:
 sys.path.insert(0, os.path.join(cur_dir, 'src'))
 from github.version import get_version
 
-pkg_requires = ['setuptools', ]
+pkg_requires = ['setuptools', 'github2']
 # simplejson is included in the standard library since Python 2.6 as json, but
 # unfortunately it is too old.  We can use stdlib json with Python 2.7.
 if sys.version_info[0] < 3 and sys.version_info[1] < 7:

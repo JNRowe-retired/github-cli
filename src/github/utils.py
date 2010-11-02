@@ -1,33 +1,11 @@
 import os
 import sys
 import re
-import urllib2
 import tempfile
 import textwrap
 from urllib2 import build_opener, HTTPCookieProcessor, Request
 from urllib import urlencode
 from subprocess import Popen, PIPE, call
-
-opener = build_opener(HTTPCookieProcessor)
-
-
-def urlopen2(url, data=None, auth=True, user_agent='github-cli'):
-    if auth:
-        config = get_config()
-        auth_dict = {'login': config['user'], 'token': config['token']}
-        if data:
-            data.update(auth_dict)
-        else:
-            data = auth_dict
-    if hasattr(data, "__iter__"):
-        data = urlencode(data)
-    headers = {'User-Agent': user_agent}
-    try:
-        return opener.open(Request(url, data, headers))
-    except urllib2.HTTPError, info:
-        raise Exception("server problem (%s)" % info)
-    except urllib2.URLError:
-        raise Exception("connection problem")
 
 
 def get_remote_info():
