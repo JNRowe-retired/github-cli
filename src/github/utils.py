@@ -3,11 +3,10 @@ import sys
 import re
 import urllib2
 import tempfile
-import subprocess
 import textwrap
 from urllib2 import build_opener, HTTPCookieProcessor, Request
 from urllib import urlencode
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 
 opener = build_opener(HTTPCookieProcessor)
 
@@ -131,7 +130,7 @@ def edit_text(text):
     f.flush()
 
     command = "%s %s" % (editor, f.name)
-    ret = subprocess.call(command, shell=True)
+    ret = call(command, shell=True)
     if ret != 0:
         print "error: editor command failed"
         sys.exit(1)
@@ -167,8 +166,8 @@ class Pager(object):
             for cmd in pager_commands:
                 if hasattr(os, 'system') and \
                               os.system('(%s) 2>/dev/null' % cmd) == 0:
-                    self.proc = subprocess.Popen([cmd], shell=True,
-                        stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+                    self.proc = Popen([cmd], shell=True, stdin=PIPE,
+                        stderr=PIPE)
                     self.file = self.proc.stdin
                     self.cmd = cmd
                     break
