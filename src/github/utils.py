@@ -7,7 +7,7 @@ import subprocess
 import textwrap
 from urllib2 import build_opener, HTTPCookieProcessor, Request
 from urllib import urlencode
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 
 opener = build_opener(HTTPCookieProcessor)
 

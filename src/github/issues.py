@@ -1,4 +1,3 @@
-import os
 import sys
 import urllib
 import webbrowser as browser
