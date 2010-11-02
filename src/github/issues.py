@@ -85,7 +85,7 @@ def handle_error(result):
 
 
 def validate_number(number, example):
-    msg = "number required\nexample: %s" % example
+    msg = "number required\nexample: %s" % example.replace("%prog", get_prog())
     if not number:
         raise Exception(msg)
     else:
@@ -212,7 +212,7 @@ class Commands(object):
         printer.close()
 
     def show(self, number=None, verbose=False, webbrowser=False, **kwargs):
-        validate_number(number, example="%s show 1" % get_prog())
+        validate_number(number, example="%prog show 1")
         if webbrowser:
             issue_url_template = "http://github.com/%s/%s/issues/%s/find"
             issue_url = issue_url_template % (self.user, self.repo, number)
@@ -250,19 +250,19 @@ class Commands(object):
         pprint_issue(issue)
 
     def close(self, number=None, **kwargs):
-        validate_number(number, example="%s close 1" % get_prog())
+        validate_number(number, example="%prog close 1")
         result = self.__submit('close', number)
         issue = get_key(result, 'issue')
         pprint_issue(issue)
 
     def reopen(self, number=None, **kwargs):
-        validate_number(number, example="%s open 1" % get_prog())
+        validate_number(number, example="%prog open 1")
         result = self.__submit('reopen', number)
         issue = get_key(result, 'issue')
         pprint_issue(issue)
 
     def edit(self, number=None, **kwargs):
-        validate_number(number, example="%s edit 1" % get_prog())
+        validate_number(number, example="%prog edit 1")
         gh_issue = self.__get_issue(number)
         output = {'title': gh_issue['title'], 'body': gh_issue['body']}
         post_data = create_edit_issue(gh_issue)
@@ -275,11 +275,11 @@ class Commands(object):
         pprint_issue(issue)
 
     def label(self, command, label, number=None, **kwargs):
-        validate_number(number, example="%s label %s %s 1" % (get_prog(),
-            command, label))
+        validate_number(number, example="%prog label %s %s 1" % (command,
+            label))
         if command not in ['add', 'remove']:
             msg = "label command should use either 'add' or 'remove'\n"\
-                "example: %s label add %s %s" % (get_prog(), label, number)
+                "example: %prog label add %s %s" % (label, number)
             raise Exception(msg)
         label = urllib.quote(label)
         label = label.replace(".", "%2E") # this is not done by urllib.quote
@@ -293,7 +293,7 @@ class Commands(object):
             print "no labels found for issue #%s" % number
 
     def comment(self, number=None, **kwargs):
-        validate_number(number, example="%s comment 1" % get_prog())
+        validate_number(number, example="%prog comment 1")
         gh_issue = self.__get_issue(number)
         comment = create_comment(gh_issue)
         post_data = {'comment': comment}
